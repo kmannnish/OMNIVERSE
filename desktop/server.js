@@ -258,8 +258,9 @@ if (require.main === module) {
     }
   });
 
-  server.listen(PORT, '127.0.0.1', () => {
-    console.log(`[OMNIVERSE Standalone] Server active on http://127.0.0.1:${PORT}`);
+  const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
+  server.listen(PORT, HOST, () => {
+    console.log(`[OMNIVERSE Standalone] Server active on http://${HOST}:${PORT}`);
   });
 }
 

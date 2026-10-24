@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: omniverse
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    branch: main
+    healthCheckPath: /
+    autoDeploy: true
