@@ -127,10 +127,10 @@ function getCookiesFilePath() {
   return null;
 }
 
-async function probeUrl(url) {
+async function executeYtDlpProbe(url, { useCookies = false } = {}) {
   const isElectron = Boolean(process.versions && process.versions.electron);
   const jsRuntime = isElectron ? 'node' : `node:${process.execPath}`;
-  const cookiesPath = getCookiesFilePath();
+  const cookiesPath = useCookies ? getCookiesFilePath() : null;
 
   const args = [
     '-j',
@@ -140,11 +140,13 @@ async function probeUrl(url) {
     '--force-ipv4',
     '--socket-timeout', '10',
     '--retries', '2',
-    '--extractor-args', 'youtube:player_client=android_vr,tv',
   ];
 
   if (cookiesPath) {
     args.push('--cookies', cookiesPath);
+    args.push('--extractor-args', 'youtube:player_client=web,mweb,ios,default');
+  } else {
+    args.push('--extractor-args', 'youtube:player_client=android_vr,tv');
   }
   args.push(url);
 
@@ -166,20 +168,45 @@ async function probeUrl(url) {
     const timer = setTimeout(() => {
       proc.kill('SIGKILL');
       const details = stderrData.trim() ? ` Details: ${stderrData.trim().slice(0, 300)}` : '';
-      reject(new Error(`Probe timed out after 45 seconds.${details}`));
-    }, 45000);
+      reject(new Error(`Probe timed out after 30 seconds.${details}`));
+    }, 30000);
 
     proc.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
         return reject(new Error(stderrData.trim() || `Probe failed with code ${code}`));
       }
-
       try {
-        const info = JSON.parse(stdoutData.trim());
-        const title = info.title || 'media';
-        const duration = info.duration || 0;
-        const formats = info.formats || [];
+        resolve(JSON.parse(stdoutData.trim()));
+      } catch (err) {
+        reject(new Error(`Failed to parse probe JSON: ${err.message}`));
+      }
+    });
+  });
+}
+
+async function probeUrl(url) {
+  let info = null;
+  try {
+    info = await executeYtDlpProbe(url, { useCookies: false });
+  } catch (err1) {
+    const cookiesPath = getCookiesFilePath();
+    if (cookiesPath) {
+      console.log('[Omniverse] Standard probe failed, retrying with cookies...');
+      try {
+        info = await executeYtDlpProbe(url, { useCookies: true });
+      } catch (err2) {
+        throw new Error(err2.message || err1.message);
+      }
+    } else {
+      throw err1;
+    }
+  }
+
+  try {
+    const title = info.title || 'media';
+    const duration = info.duration || 0;
+    const formats = info.formats || [];
 
         const videoStreamsMap = new Map();
         let videoIdx = 0;
@@ -294,7 +321,7 @@ async function probeUrl(url) {
           (a, b) => qualityOrder.indexOf(a.id) - qualityOrder.indexOf(b.id)
         );
 
-        resolve({
+        return {
           filename: title,
           duration,
           durationFormatted: formatDuration(duration),
@@ -306,12 +333,10 @@ async function probeUrl(url) {
           chapters: [],
           thumbnails,
           thumbnailUrl: (thumbnails[0] && thumbnails[0].url) || info.thumbnail,
-        });
+        };
       } catch (err) {
-        reject(new Error(`Failed to parse media metadata: ${err.message}`));
+        throw new Error(`Failed to parse media metadata: ${err.message}`);
       }
-    });
-  });
 }
 
 function startJob({ jobId, sourceUrl, targetFormat = 'mp4', targetQuality = 'original', customFilename, thumbnailUrl }) {
@@ -457,14 +482,15 @@ function startJob({ jobId, sourceUrl, targetFormat = 'mp4', targetQuality = 'ori
         '--force-ipv4',
         '--socket-timeout', '15',
         '--retries', '3',
-        '--extractor-args', 'youtube:player_client=android_vr,tv',
         '--newline',
         '--progress-template', 'PROGRESS:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s',
         '-o', targetPath,
       ];
 
       if (cookiesPath) {
-        args.splice(2, 0, '--cookies', cookiesPath);
+        args.splice(2, 0, '--cookies', cookiesPath, '--extractor-args', 'youtube:player_client=web,mweb,ios,default');
+      } else {
+        args.splice(2, 0, '--extractor-args', 'youtube:player_client=android_vr,tv');
       }
 
       if (isSubtitleOnly) {
