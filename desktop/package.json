@@ -1,0 +1,32 @@
+{
+  "name": "omniverse",
+  "productName": "OMNIVERSE",
+  "version": "1.0.0",
+  "description": "OMNIVERSE - Boundless Streams within One Luminous Core",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.omniverse.app",
+    "productName": "OMNIVERSE",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "OMNIVERSE.exe"
+    },
+    "files": [
+      "main.js",
+      "server.js",
+      "engine.js",
+      "public/**/*"
+    ]
+  },
+  "author": "Antigravity",
+  "license": "MIT"
+}

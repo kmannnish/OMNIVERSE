@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --cosmic-obsidian: #06070B;
+    --celestial-gold: #F3E5AB;
+    --radiant-core: rgba(255, 244, 214, 0.06);
+    --starlight-glow: rgba(243, 229, 171, 0.25);
+  }
+
+  body {
+    background-color: var(--cosmic-obsidian);
+    color: #F4F4F5;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overflow: hidden;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom Cursor Optimization on Fine Pointer Desktop Devices */
+@media (pointer: fine) {
+  *, *::before, *::after, body, button, a, input, select, textarea, [role="button"], label, .cursor-pointer {
+    cursor: none !important;
+  }
+}
+
+/* Radiant Chidakash Slow Breathing Aura */
+@keyframes chidakashPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.18);
+    opacity: 0.35;
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinReverseSlow {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes celestialShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-chidakash {
+  animation: chidakashPulse 12s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 36s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: spinReverseSlow 26s linear infinite;
+}
+
+/* Starlight Gold Celestial Shimmer Button */
+.shimmer-celestial-btn {
+  background: linear-gradient(
+    90deg,
+    #FFFFFF 0%,
+    #FFF8E7 25%,
+    #F3E5AB 50%,
+    #FFF8E7 75%,
+    #FFFFFF 100%
+  );
+  background-size: 200% 100%;
+}
+
+.shimmer-celestial-btn:hover {
+  animation: celestialShimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}

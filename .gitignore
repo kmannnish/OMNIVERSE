@@ -1,0 +1,30 @@
+# Large binary installer (must be uploaded via GitHub Releases, >100MB)
+OMNIVERSE-Setup.exe
+omniverse_bundle.zip
+test_*.exe
+test_*.cs
+*.log
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+.next/
+dist/
+out/
+build/
+frontend/.next/
+frontend/out/
+scratch/
+test_*.ps1
+test_*.js
+
+# Local Environment & Secrets
+.env.local
+.env.*.local
+
+# OS Files
+Thumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
