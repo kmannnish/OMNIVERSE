@@ -100,29 +100,52 @@ function generateOutputFilename(rawTitle, targetFormat, targetQuality) {
 }
 
 async function probeUrl(url) {
+  const isElectron = Boolean(process.versions && process.versions.electron);
+  const jsRuntime = isElectron ? 'node' : `node:${process.execPath}`;
+
+  const cookiesPath = path.join(process.cwd(), 'cookies.txt');
+  if (process.env.YOUTUBE_COOKIES && !fs.existsSync(cookiesPath)) {
+    try {
+      fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES, 'utf8');
+    } catch {}
+  }
+
   const args = [
     '-j',
-    '--no-warnings',
     '--no-playlist',
     '--no-check-certificates',
+    '--js-runtimes', jsRuntime,
     '--force-ipv4',
-    '--socket-timeout', '12',
-    '--extractor-args', 'youtube:player_client=android,ios,mweb',
-    url,
+    '--socket-timeout', '10',
+    '--retries', '2',
+    '--extractor-args', 'youtube:player_client=web_safari,web_embedded,mweb,android_vr',
   ];
 
+  if (fs.existsSync(cookiesPath)) {
+    args.push('--cookies', cookiesPath);
+  }
+  args.push(url);
+
   return new Promise((resolve, reject) => {
-    const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn('yt-dlp', args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, PYTHONUNBUFFERED: '1' },
+    });
     let stdoutData = '';
     let stderrData = '';
 
     proc.stdout.on('data', (d) => { stdoutData += d.toString('utf8'); });
-    proc.stderr.on('data', (d) => { stderrData += d.toString('utf8'); });
+    proc.stderr.on('data', (d) => {
+      const text = d.toString('utf8');
+      stderrData += text;
+      console.error('[yt-dlp probe stderr]', text);
+    });
 
     const timer = setTimeout(() => {
       proc.kill('SIGKILL');
-      reject(new Error(`Probe timed out after 45 seconds. ${stderrData.trim() ? 'Details: ' + stderrData.trim().slice(0, 150) : ''}`));
-    }, 45000);
+      const details = stderrData.trim() ? ` Details: ${stderrData.trim().slice(0, 300)}` : '';
+      reject(new Error(`Probe timed out after 35 seconds.${details}`));
+    }, 35000);
 
     proc.on('close', (code) => {
       clearTimeout(timer);
@@ -401,17 +424,32 @@ function startJob({ jobId, sourceUrl, targetFormat = 'mp4', targetQuality = 'ori
       const isAudioOnly = ['mp3', 'm4a', 'wav'].includes(targetFormat);
       const isSubtitleOnly = ['srt', 'vtt'].includes(targetFormat);
 
+      const isElectron = Boolean(process.versions && process.versions.electron);
+      const jsRuntime = isElectron ? 'node' : `node:${process.execPath}`;
+
+      const cookiesPath = path.join(process.cwd(), 'cookies.txt');
+      if (process.env.YOUTUBE_COOKIES && !fs.existsSync(cookiesPath)) {
+        try {
+          fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES, 'utf8');
+        } catch {}
+      }
+
       const args = [
-        '--no-warnings',
         '--no-playlist',
         '--no-check-certificates',
+        '--js-runtimes', jsRuntime,
         '--force-ipv4',
         '--socket-timeout', '15',
-        '--extractor-args', 'youtube:player_client=android,ios,mweb',
+        '--retries', '3',
+        '--extractor-args', 'youtube:player_client=web_safari,web_embedded,mweb,android_vr',
         '--newline',
         '--progress-template', 'PROGRESS:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s',
         '-o', targetPath,
       ];
+
+      if (fs.existsSync(cookiesPath)) {
+        args.splice(2, 0, '--cookies', cookiesPath);
+      }
 
       if (isSubtitleOnly) {
         args.push('--skip-download', '--write-sub', '--sub-format', targetFormat);
@@ -427,8 +465,15 @@ function startJob({ jobId, sourceUrl, targetFormat = 'mp4', targetQuality = 'ori
       }
       args.push(sourceUrl);
 
-      const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      const proc = spawn('yt-dlp', args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      });
       let acc = '';
+
+      proc.stderr.on('data', (d) => {
+        console.error('[yt-dlp job stderr]', d.toString('utf8'));
+      });
 
       proc.stdout.on('data', (chunk) => {
         acc += chunk.toString('utf8');
