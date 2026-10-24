@@ -144,7 +144,7 @@ async function executeYtDlpProbe(url, { useCookies = false } = {}) {
 
   if (cookiesPath) {
     args.push('--cookies', cookiesPath);
-    args.push('--extractor-args', 'youtube:player_client=web,mweb,ios,default');
+    args.push('--extractor-args', 'youtube:player_client=web,mweb,default');
   } else {
     args.push('--extractor-args', 'youtube:player_client=android_vr,tv');
   }
@@ -190,8 +190,10 @@ async function probeUrl(url) {
   try {
     info = await executeYtDlpProbe(url, { useCookies: false });
   } catch (err1) {
+    const isUnavailable = /unavailable|does not exist|removed by the uploader|private video/i.test(err1.message);
     const cookiesPath = getCookiesFilePath();
-    if (cookiesPath) {
+
+    if (!isUnavailable && cookiesPath) {
       console.log('[Omniverse] Standard probe failed, retrying with cookies...');
       try {
         info = await executeYtDlpProbe(url, { useCookies: true });
@@ -488,7 +490,7 @@ function startJob({ jobId, sourceUrl, targetFormat = 'mp4', targetQuality = 'ori
       ];
 
       if (cookiesPath) {
-        args.splice(2, 0, '--cookies', cookiesPath, '--extractor-args', 'youtube:player_client=web,mweb,ios,default');
+        args.splice(2, 0, '--cookies', cookiesPath, '--extractor-args', 'youtube:player_client=web,mweb,default');
       } else {
         args.splice(2, 0, '--extractor-args', 'youtube:player_client=android_vr,tv');
       }
