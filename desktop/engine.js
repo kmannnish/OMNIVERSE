@@ -105,8 +105,9 @@ async function probeUrl(url) {
     '--no-warnings',
     '--no-playlist',
     '--no-check-certificates',
-    '--extractor-args', 'youtube:player_client=web_embedded,android,web',
-    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    '--force-ipv4',
+    '--socket-timeout', '12',
+    '--extractor-args', 'youtube:player_client=android,ios,mweb',
     url,
   ];
 
@@ -120,8 +121,8 @@ async function probeUrl(url) {
 
     const timer = setTimeout(() => {
       proc.kill('SIGKILL');
-      reject(new Error('Probe timed out after 30 seconds'));
-    }, 30000);
+      reject(new Error(`Probe timed out after 45 seconds. ${stderrData.trim() ? 'Details: ' + stderrData.trim().slice(0, 150) : ''}`));
+    }, 45000);
 
     proc.on('close', (code) => {
       clearTimeout(timer);
@@ -404,8 +405,9 @@ function startJob({ jobId, sourceUrl, targetFormat = 'mp4', targetQuality = 'ori
         '--no-warnings',
         '--no-playlist',
         '--no-check-certificates',
-        '--extractor-args', 'youtube:player_client=web_embedded,android,web',
-        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        '--force-ipv4',
+        '--socket-timeout', '15',
+        '--extractor-args', 'youtube:player_client=android,ios,mweb',
         '--newline',
         '--progress-template', 'PROGRESS:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s',
         '-o', targetPath,
