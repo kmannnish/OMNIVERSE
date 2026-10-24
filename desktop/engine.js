@@ -99,16 +99,38 @@ function generateOutputFilename(rawTitle, targetFormat, targetQuality) {
   return `${cleanBase}${suffix}${formatInfo.ext}`;
 }
 
+function getCookiesFilePath() {
+  const cookiesPath = path.join(process.cwd(), 'cookies.txt');
+  if (process.env.YOUTUBE_COOKIES) {
+    try {
+      let raw = process.env.YOUTUBE_COOKIES.trim();
+      if (!raw.includes('\n') && raw.includes('\\n')) {
+        raw = raw.replace(/\\n/g, '\n');
+      }
+      if (!raw.includes('\t') && !raw.includes('# Netscape') && raw.length > 50) {
+        try {
+          const decoded = Buffer.from(raw, 'base64').toString('utf8');
+          if (decoded.includes('\t') || decoded.includes('# Netscape')) {
+            raw = decoded;
+          }
+        } catch {}
+      }
+      fs.writeFileSync(cookiesPath, raw, 'utf8');
+      return cookiesPath;
+    } catch (err) {
+      console.error('[Omniverse] Failed to sync YOUTUBE_COOKIES to disk:', err.message);
+    }
+  }
+  if (fs.existsSync(cookiesPath) && fs.statSync(cookiesPath).size > 10) {
+    return cookiesPath;
+  }
+  return null;
+}
+
 async function probeUrl(url) {
   const isElectron = Boolean(process.versions && process.versions.electron);
   const jsRuntime = isElectron ? 'node' : `node:${process.execPath}`;
-
-  const cookiesPath = path.join(process.cwd(), 'cookies.txt');
-  if (process.env.YOUTUBE_COOKIES && !fs.existsSync(cookiesPath)) {
-    try {
-      fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES, 'utf8');
-    } catch {}
-  }
+  const cookiesPath = getCookiesFilePath();
 
   const args = [
     '-j',
@@ -118,10 +140,10 @@ async function probeUrl(url) {
     '--force-ipv4',
     '--socket-timeout', '10',
     '--retries', '2',
-    '--extractor-args', 'youtube:player_client=web_safari,web_embedded,mweb,android_vr',
+    '--extractor-args', `youtube:player_client=${cookiesPath ? 'web,web_safari,mweb' : 'web_safari,web_embedded,mweb,android_vr'}`,
   ];
 
-  if (fs.existsSync(cookiesPath)) {
+  if (cookiesPath) {
     args.push('--cookies', cookiesPath);
   }
   args.push(url);
@@ -426,13 +448,7 @@ function startJob({ jobId, sourceUrl, targetFormat = 'mp4', targetQuality = 'ori
 
       const isElectron = Boolean(process.versions && process.versions.electron);
       const jsRuntime = isElectron ? 'node' : `node:${process.execPath}`;
-
-      const cookiesPath = path.join(process.cwd(), 'cookies.txt');
-      if (process.env.YOUTUBE_COOKIES && !fs.existsSync(cookiesPath)) {
-        try {
-          fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES, 'utf8');
-        } catch {}
-      }
+      const cookiesPath = getCookiesFilePath();
 
       const args = [
         '--no-playlist',
@@ -441,13 +457,13 @@ function startJob({ jobId, sourceUrl, targetFormat = 'mp4', targetQuality = 'ori
         '--force-ipv4',
         '--socket-timeout', '15',
         '--retries', '3',
-        '--extractor-args', 'youtube:player_client=web_safari,web_embedded,mweb,android_vr',
+        '--extractor-args', `youtube:player_client=${cookiesPath ? 'web,web_safari,mweb' : 'web_safari,web_embedded,mweb,android_vr'}`,
         '--newline',
         '--progress-template', 'PROGRESS:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s',
         '-o', targetPath,
       ];
 
-      if (fs.existsSync(cookiesPath)) {
+      if (cookiesPath) {
         args.splice(2, 0, '--cookies', cookiesPath);
       }
 
